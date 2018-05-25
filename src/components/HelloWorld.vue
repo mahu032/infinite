@@ -1,16 +1,22 @@
 <template>
   <div>
     <span v-for="item in tabs" :key="item.id" @click="switchTab(item)" :style="{color:item.id===params?'red':''}">{{item.name}}</span>
-    <component :is="showModal" :list="list"/>
-    <infinite-loading :on-infinite="getData" ref="infinite">
-      <span slot="no-results" style="display:none;"></span>
-      <div slot="no-more" class="tips-nolist">no-more</div>
-    </infinite-loading>
+    <div class="infinite-wrapper" infinite-wrapper>
+      <PullTo @top-pull="topPull" @bottom-pull="bottomPul" @scroll="scroll">
+        <component :is="showModal" :list="list" />
+      </PullTo>
+      <!-- <component :is="showModal" :list="list" :style="{display:display}" /> -->
+      <!-- <infinite-loading :on-infinite="getData" ref="infinite">
+        <span slot="no-results" style="display:none;"></span>
+        <div slot="no-more" class="tips-nolist">no-more</div>
+      </infinite-loading> -->
+    </div>
   </div>
 </template>
 
 <script>
-import InfiniteLoading from 'vue-infinite-loading'
+import InfiniteLoading from './infinite/components/InfiniteLoading'
+import PullTo from './PullTo'
 import Demo from './Demo'
 export default {
   name: 'HelloWorld',
@@ -24,7 +30,8 @@ export default {
       params: 0,
       offset: 0,
       total: 20,
-      list: []
+      list: [],
+      display: 'block'
     }
   },
   methods: {
@@ -33,37 +40,63 @@ export default {
       this.params = item.id
       this.offset = 0
       this.list = []
+      // 让列表高度 0
+      // this.display = 'none'
       this.$refs.infinite.$emit('$InfiniteLoading:reset')
+      // this.$nextTick(() => {
+      //   // 等更新完毕再触发reset
+      //   this.$refs.infinite.$emit('$InfiniteLoading:reset')
+      // })
       console.log(this.$refs.infinite)
     },
-    getData() {
+    getData(load) {
+      // this.display = 'block'
       if (this.list.length) {
         this.offset += 5
       }
       setTimeout(() => {
         let str = this.tabs[this.params].name
         for (var i = 1; i < 6; i++) {
-          this.list.push(str + '-----------' + (i+this.offset))
+          this.list.push(str + '-----------' + (i + this.offset))
         }
-        this.$refs.infinite.$emit('$InfiniteLoading:loaded')
+        // this.$refs.infinite.$emit('$InfiniteLoading:loaded')
         if (this.offset === this.total) {
           this.$refs.infinite.$emit('$InfiniteLoading:complete')
         }
-      }, 2000)
+      }, 20000)
+    },
+    toPull(diff) {
+      console.log('位移量', diff)
+    },
+    scroll(event) {
+      console.log('滚动事件', event)
+    },
+    topLoad(load) {
+      this.list = []
+      this.offset = 0
+      this.getData(load)
+    },
+    bottomLoad(load) {
+      this.getData(load)
     }
   },
   components: {
     InfiniteLoading,
+    PullTo,
     Demo
   }
 }
 </script>
 <style scoped>
-span{
+span {
   display: inline-block;
   border: 1px solid #333;
   width: 40vw;
   height: 50px;
   line-height: 50px;
+}
+.infinite-wrapper {
+  height: 60vh;
+  overflow-y: auto;
 }
 </style>
