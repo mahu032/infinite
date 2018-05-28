@@ -185,7 +185,8 @@ export default {
       throttleEmitScroll: null,
       // 无限滚动方法
       throttleOnInfiniteScroll: null,
-      isFirstLoad: true
+      noResult: false,
+      noMore: false
     }
   },
   computed: {
@@ -195,17 +196,11 @@ export default {
     _bottomConfig: function() {
       return Object.assign({}, BOTTOM_DEFAULT_CONFIG, this.bottomConfig)
     },
-    noResult() {
-      return this.state === 'loaded-no-result'
-    },
-    noMore() {
-      return this.state === 'loaded-no-more'
-    },
     showTop() {
-      return (this.state !== 'loaded-no-result' || this.state !== 'loaded-no-more') && this.direction === 'down'
+      return this.direction === 'down' || this.state === 'loaded-no-result'
     },
     showBottom() {
-      return (this.state !== 'loaded-no-result' || this.state !== 'loaded-no-more') && this.direction === 'up'
+      return this.direction === 'up' && this.state !== 'loaded-no-result' && this.state !== 'loaded-no-more'
     }
   },
   // watch: {
@@ -281,6 +276,8 @@ export default {
 
 
       if (loadState === 'done' || loadState === 'fail') {
+        this.noResult = false
+        this.noMore = false
         if (this.direction === 'down') {
           // 下拉,顶部提示文字加载完毕或加载失败
           this.topText = this._topConfig[loadState + 'Text']
@@ -301,14 +298,23 @@ export default {
             }, 200)
           }, loadedStayTime)
         }
-      } else if (loadState === 'no-more' && this.direction !== 'down') {
-        console.warn('请确认你的使用方法正确')
+      } else if (loadState === 'no-more') {
+        this.noResult = false
+        this.noMore = true
+        if (this.diff) {
+          this.scrollTo(0)
+        }
       } else if (loadState === 'reset') {
         this.state = ''
+        this.noResult = false
+        this.noMore = false
+        this.initData()
         if (this.diff) {
           this.scrollTo(0)
         }
       } else if (loadState === 'no-result') {
+        this.noResult = true
+        this.noMore = false
         if (this.diff) {
           this.scrollTo(0)
         }
@@ -355,6 +361,7 @@ export default {
           return
         }
       }
+      this.noMore = false
       // 大于0 方向 向下, 反之向上
       this.direction = this.distance > 0 ? 'down' : 'up'
       if (this.startScrollTop === 0 && this.direction === 'down' && this.isTopBounce) {
@@ -471,11 +478,14 @@ export default {
       this.scrollEl.removeEventListener('touchend', this.handleTouchEnd)
       // 触发
       this.scrollEl.removeEventListener('scroll', this.handleScroll)
+    },
+    initData() {
+      this.bottomLoadMethod && this.bottomLoadMethod.call(this, this.actionLoaded)
     }
   },
   mounted() {
     this.init()
-    // this.bottomLoadMethod && this.bottomLoadMethod.call(this, this.actionLoaded)
+    this.initData()
   },
   beforeDestroy() {
     this.removeEvent()
@@ -505,5 +515,6 @@ export default {
   height: 100%;
   line-height: 50px;
   text-align: center;
+  font-size: 14px;
 }
 </style>
