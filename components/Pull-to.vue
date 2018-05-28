@@ -202,10 +202,10 @@ export default {
       return this.state === 'loaded-no-more'
     },
     showTop() {
-      return (this.state !== 'loaded-no-result' || this.state !== 'loaded-no-more') && this.direction === 'down'
+      return this.direction === 'down' && this.state !== 'loaded-no-result' && this.state !== 'loaded-no-more'
     },
     showBottom() {
-      return (this.state !== 'loaded-no-result' || this.state !== 'loaded-no-more') && this.direction === 'up'
+      return this.direction === 'up' && this.state !== 'loaded-no-result' && this.state !== 'loaded-no-more'
     }
   },
   // watch: {
