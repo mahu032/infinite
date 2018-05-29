@@ -6,9 +6,13 @@
       </slot>
     </div>
     <div class="scroll-container">
-      <slot name="no-result" v-if="noResult"></slot>
+      <div v-show="noResult">
+        <slot name="no-result"></slot>
+      </div>
       <slot></slot>
-      <slot name="no-more" v-if="noMore"></slot>
+      <div v-show="noMore">
+        <slot name="no-more"></slot>
+      </div>
     </div>
     <div v-show="bottomLoadMethod&&showBottom" :style="{ height: `${bottomBlockHeight}px`, marginBottom: `${-bottomBlockHeight}px` }" class="action-block">
       <slot name="bottom-block" :state="state" :state-text="bottomText">
@@ -197,9 +201,11 @@ export default {
       return Object.assign({}, BOTTOM_DEFAULT_CONFIG, this.bottomConfig)
     },
     showTop() {
+      // 下拉 或者 状态为 no-result
       return this.direction === 'down' || this.state === 'loaded-no-result'
     },
     showBottom() {
+      // 上拉 并且 状态不为no-result和no-more
       return this.direction === 'up' && this.state !== 'loaded-no-result' && this.state !== 'loaded-no-more'
     }
   },
@@ -258,24 +264,8 @@ export default {
       this.state = `loaded-${loadState}`
       let loadedStayTime
 
-      // if (this.direction === 'down') {
-      //   // 下拉,顶部提示文字加载完毕或加载失败
-      //   this.topText = loadState === 'done'
-      //     ? this._topConfig.doneText
-      //     : this._topConfig.failText
-      //   // 加载完毕等待时间
-      //   loadedStayTime = this._topConfig.loadedStayTime
-      // } else {
-      //   // 上拉,底部提示文字
-      //   this.bottomText = loadState === 'done'
-      //     ? this._bottomConfig.doneText
-      //     : this._bottomConfig.failText
-      //   // 加载完毕等待时间
-      //   loadedStayTime = this._bottomConfig.loadedStayTime
-      // }
-
-
       if (loadState === 'done' || loadState === 'fail') {
+        // 加载完成或失败
         this.noResult = false
         this.noMore = false
         if (this.direction === 'down') {
@@ -299,12 +289,14 @@ export default {
           }, loadedStayTime)
         }
       } else if (loadState === 'no-more') {
+        // 没有更多
         this.noResult = false
         this.noMore = true
         if (this.diff) {
           this.scrollTo(0)
         }
       } else if (loadState === 'reset') {
+        // 重置
         this.state = ''
         this.noResult = false
         this.noMore = false
@@ -313,13 +305,15 @@ export default {
           this.scrollTo(0)
         }
       } else if (loadState === 'no-result') {
+        // 没有结构
         this.noResult = true
         this.noMore = false
         if (this.diff) {
           this.scrollTo(0)
         }
-      } else if (loadState) {
-        console.warn('请传入done,fail,no-more,no-result')
+      } else {
+        // 传入的loadState不合格
+        console.warn('请传入done,fail,no-more,no-result,reset')
       }
     },
     scrollTo(y, duration = 200) {
@@ -360,8 +354,10 @@ export default {
         if (this.state === 'loaded-no-result' || this.state === 'loaded-no-more') {
           return
         }
+      }else{
+        // 下拉刷新-不显示
+        this.noMore = false
       }
-      this.noMore = false
       // 大于0 方向 向下, 反之向上
       this.direction = this.distance > 0 ? 'down' : 'up'
       if (this.startScrollTop === 0 && this.direction === 'down' && this.isTopBounce) {
