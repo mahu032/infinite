@@ -1,9 +1,7 @@
 <template>
   <div class="vue-pull-to-wrapper" :style="{ height: wrapperHeight, transform: `translate3d(0, ${diff}px, 0)` }">
     <div v-show="topLoadMethod&&showTop" :style="{ height: `${topBlockHeight}px`, marginTop: `${-topBlockHeight}px` }" class="action-block">
-      <slot name="top-block" :state="state" :state-text="topText">
-        <p class="default-text">{{ topText }}</p>
-      </slot>
+      <div :class="showSpinner?spinnerType:'default-text'" :style="{'line-height':`${topBlockHeight}px`}">{{ showSpinner?'':topText }}</div>
     </div>
     <div class="scroll-container">
       <div v-show="noResult">
@@ -15,16 +13,11 @@
       </div>
     </div>
     <div v-show="bottomLoadMethod&&showBottom" :style="{ height: `${bottomBlockHeight}px`, marginBottom: `${-bottomBlockHeight}px` }" class="action-block">
-      <slot name="bottom-block" :state="state" :state-text="bottomText">
-        <p class="default-text">{{ bottomText }}</p>
-      </slot>
+      <div :class="showSpinner?spinnerType:'default-text'" :style="{'line-height':`${bottomBlockHeight}px`}">{{ showSpinner?'':bottomText }}</div>
     </div>
   </div>
 </template>
-
-<script type="text/babel">
-// import { throttle } from './utils'
-// import { TOP_DEFAULT_CONFIG, BOTTOM_DEFAULT_CONFIG } from './config'
+<script>
 const TOP_DEFAULT_CONFIG = {
   // 下拉时提示文字
   pullText: '下拉刷新',
@@ -55,12 +48,31 @@ const BOTTOM_DEFAULT_CONFIG = {
   doneText: '加载完成',
   // 失败文字
   failText: '加载失败',
+  // 没有更多
+  'no-moreText': '没有更多',
+  // 没有数据
+  'no-resultText': '没有数据',
   // 加载完毕等待时间
   loadedStayTime: 400,
   // 默认距离和高度一样
   stayDistance: 50,
   // 高度差多少触发
   triggerDistance: 70
+}
+
+const LOADING_CONFIG = {
+  // loading时的类型 spinner or text
+  type: 'spinner',
+  // spinner 时的  loading 风格
+  style: 'default'
+}
+
+const SPINNER_STYLE = {
+  bubbles: 'loading-bubbles',
+  circles: 'loading-circles',
+  default: 'loading-default',
+  spiral: 'loading-spiral',
+  waveDots: 'loading-wave-dots'
 }
 // 节流方法
 function throttle(fn, delay, mustRunDelay = 0) {
@@ -106,6 +118,12 @@ export default {
     wrapperHeight: {
       type: String,
       default: '100%'
+    },
+    loadingConfig: {
+      type: Object,
+      default: () => {
+        return {}
+      }
     },
     // 下拉刷新方法
     topLoadMethod: {
@@ -153,6 +171,10 @@ export default {
       default: () => {
         return {}
       }
+    },
+    autoLoad: {
+      type: Boolean,
+      default: true
     }
   },
   data() {
@@ -200,24 +222,24 @@ export default {
     _bottomConfig: function() {
       return Object.assign({}, BOTTOM_DEFAULT_CONFIG, this.bottomConfig)
     },
+    _loadingConfig: function() {
+      return Object.assign({}, LOADING_CONFIG, this.loadingConfig)
+    },
     showTop() {
       // 下拉 或者 状态为 no-result
       return this.direction === 'down' || this.state === 'loaded-no-result'
     },
     showBottom() {
       // 上拉 并且 状态不为no-result和no-more
-      return this.direction === 'up' && this.state !== 'loaded-no-result' && this.state !== 'loaded-no-more'
+      return this.direction === 'up' && this.state !== 'loaded-no-result' && this.diff
+    },
+    showSpinner() {
+      return this._loadingConfig.type === 'spinner' && this.state === 'loading'
+    },
+    spinnerType() {
+      return SPINNER_STYLE[this._loadingConfig.style] || SPINNER_STYLE.default
     }
   },
-  // watch: {
-  //   state(val) {
-  //     if (this.direction === 'down') {
-  //       this.$emit('top-state-change', val)
-  //     } else {
-  //       this.$emit('bottom-state-change', val)
-  //     }
-  //   }
-  // },
   methods: {
     // 上下拉-修改提示文字
     actionPull() {
@@ -242,6 +264,7 @@ export default {
     // 正在加载
     actionLoading() {
       // 状态为loading
+      this.$emit('onLoading')
       this.state = 'loading'
       if (this.direction === 'down') {
         // 下拉,顶部提示文字修改,然后掉下拉方法
@@ -260,57 +283,51 @@ export default {
     },
     // 加载完毕-调用改组件回调,在这里处理顶部底部加载结束时组件状态
     actionLoaded(loadState) {
-      // 状态为-加载完毕或加载失败
+      // 状态为-加载结束状态  done, fail, no-more, no-result, reset
       this.state = `loaded-${loadState}`
       let loadedStayTime
+      // 加载结束提示文字
+      if (this.direction === 'down') {
+        // 下拉,顶部提示文字加载完毕或加载失败
+        this.topText = this._topConfig[loadState + 'Text'] || '加载完成'
+        // 加载完毕等待时间
+        loadedStayTime = this._topConfig.loadedStayTime
+      } else {
+        // 上拉,底部提示文字
+        this.bottomText = this._bottomConfig[loadState + 'Text']
+        // 加载完毕等待时间
+        loadedStayTime = this._bottomConfig.loadedStayTime
+      }
+      // 位移归0
+      if (this.diff && loadState !== 'reset') {
+        setTimeout(() => {
+          this.scrollTo(0)
+          // reset state
+          if (loadState !== 'no-more' && loadState !== 'no-result') {
+            setTimeout(() => {
+              this.state = ''
+            }, 200)
+          }
+        }, loadedStayTime)
+      }
 
       if (loadState === 'done' || loadState === 'fail') {
         // 加载完成或失败
         this.noResult = false
         this.noMore = false
-        if (this.direction === 'down') {
-          // 下拉,顶部提示文字加载完毕或加载失败
-          this.topText = this._topConfig[loadState + 'Text']
-          // 加载完毕等待时间
-          loadedStayTime = this._topConfig.loadedStayTime
-        } else {
-          // 上拉,底部提示文字
-          this.bottomText = this._bottomConfig[loadState + 'Text']
-          // 加载完毕等待时间
-          loadedStayTime = this._bottomConfig.loadedStayTime
-        }
-        if (this.diff) {
-          setTimeout(() => {
-            this.scrollTo(0)
-            // reset state
-            setTimeout(() => {
-              this.state = ''
-            }, 200)
-          }, loadedStayTime)
-        }
       } else if (loadState === 'no-more') {
         // 没有更多
         this.noResult = false
         this.noMore = true
-        if (this.diff) {
-          this.scrollTo(0)
-        }
       } else if (loadState === 'reset') {
         // 重置
-        this.state = ''
         this.noResult = false
         this.noMore = false
         this.initData()
-        if (this.diff) {
-          this.scrollTo(0)
-        }
       } else if (loadState === 'no-result') {
         // 没有结构
         this.noResult = true
         this.noMore = false
-        if (this.diff) {
-          this.scrollTo(0)
-        }
       } else {
         // 传入的loadState不合格
         console.warn('请传入done,fail,no-more,no-result,reset')
@@ -343,18 +360,24 @@ export default {
     },
     // TouchMove
     handleTouchMove(event) {
+      event.preventDefault()
+      event.stopPropagation()
       // 当前Y方向位置
       this.currentY = event.touches[0].clientY
       // 滑动长度 = (当前Y - 开始Y) / 阀值  +  初始位移
       this.distance = (this.currentY - this.startY) / this.distanceIndex + this.beforeDiff
 
+      // 加载中禁止拖动
+      if (this.state === 'loading') {
+        return false
+      }
       // 上拉
       if (this.distance <= 0) {
         // 无结果或者无更多数据
         if (this.state === 'loaded-no-result' || this.state === 'loaded-no-more') {
-          return
+          return false
         }
-      }else{
+      } else {
         // 下拉刷新-不显示
         this.noMore = false
       }
@@ -362,8 +385,6 @@ export default {
       this.direction = this.distance > 0 ? 'down' : 'up'
       if (this.startScrollTop === 0 && this.direction === 'down' && this.isTopBounce) {
         // 初始未滚动,方向下拉,顶部反弹
-        event.preventDefault()
-        event.stopPropagation()
         // 设置位移量
         this.diff = this.distance
         // 顶部节流 调节流方法, 不节流直接触发top-pull
@@ -383,8 +404,6 @@ export default {
         }
       } else if (this.bottomReached && this.direction === 'up' && this.isBottomBounce) {
         // 到达底部,方向上拉,底部反弹
-        event.preventDefault()
-        event.stopPropagation()
         // 设置位移
         this.diff = this.distance
         // 底部节流 调节流方法, 不节流直接触发bottom-pull
@@ -403,6 +422,7 @@ export default {
           this.actionTrigger()
         }
       }
+      return false
     },
     // touchEnd
     handleTouchEnd(event) {
@@ -476,12 +496,18 @@ export default {
       this.scrollEl.removeEventListener('scroll', this.handleScroll)
     },
     initData() {
+      this.diff = this.topBlockHeight
+      this.topText = this._topConfig.loadingText
+      this.direction = 'down'
+      this.state = 'loading'
       this.bottomLoadMethod && this.bottomLoadMethod.call(this, this.actionLoaded)
     }
   },
   mounted() {
     this.init()
-    this.initData()
+    if (this.autoLoad) {
+      this.initData()
+    }
   },
   beforeDestroy() {
     this.removeEvent()
@@ -505,12 +531,21 @@ export default {
 .vue-pull-to-wrapper .action-block {
   position: relative;
   width: 100%;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .default-text {
   height: 100%;
-  line-height: 50px;
   text-align: center;
   font-size: 14px;
+}
+.action-block [class^="loading-"]{
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
 }
 </style>

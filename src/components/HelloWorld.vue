@@ -3,6 +3,65 @@
     <span v-for="item in tabs" :key="item.id" @click="switchTab(item)" :style="{color:item.id===params?'red':''}">{{item.name}}</span>
     <div class="infinite-wrapper" infinite-wrapper>
       <PullTo @top-pull="toPull" @bottom-pull="toPull" @scroll="scroll" :topLoadMethod="topLoad" :bottomLoadMethod="bottomLoad">
+        <!--
+          slot 支持
+          <div slot="no-result"></div>
+          <div slot="no-more"></div>
+
+          prop:
+          topLoadMethod 下拉刷新方法
+          bottomLoadMethod 上拉加载方法
+          loadingConfig {
+            type: 默认 图案--spinner 文字--text 默认 spinner
+            style: default 图案风格   default,bubbles,circles,spiral,waveDots
+          }
+
+          topConfig 下拉时提示文字默认值
+          {
+            pullText: '下拉刷新',
+            // 下拉释放提示文字
+            triggerText: '释放更新',
+            // 下拉加载时文字
+            loadingText: '加载中...',
+            // 成功文字
+            doneText: '加载完成',
+            // 失败文字
+            failText: '加载失败',
+            // 加载完毕等待时间
+            loadedStayTime: 400,
+            // 默认距离和高度一样
+            stayDistance: 50,
+            // 高度差多少触发
+            triggerDistance: 70
+          }
+          bottomConfig 上拉时提示文字
+          {
+            pullText: '上拉加载',
+            // 上拉释放提示文字
+            triggerText: '释放更新',
+            // 上拉加载时文字
+            loadingText: '加载中...',
+            // 成功文字
+            doneText: '加载完成',
+            // 失败文字
+            failText: '加载失败',
+            // 没有更多
+            'no-moreText': '没有更多',
+            // 没有数据
+            'no-resultText': '没有数据',
+            // 加载完毕等待时间
+            loadedStayTime: 400,
+            // 默认距离和高度一样
+            stayDistance: 50,
+            // 高度差多少触发
+            triggerDistance: 70
+          }
+
+          topLoadMethod  bottomLoadMethod 调用时 参数 callback 为load
+          请求结束请 load(state)
+
+          state: done 请求完成还有更多数据 fail 请求失败 no-more 请求完成没有更多 no-result 请求成功没有数据 reset 重新请求
+         -->
         <div slot="bottom-block">底---部</div>
         <component :is="showModal" :list="list" />
       </PullTo>
@@ -17,7 +76,7 @@
 
 <script>
 import InfiniteLoading from './infinite/components/InfiniteLoading'
-import PullTo from './PullTo'
+import PullToRefresh from './PullToRefresh'
 import Demo from './Demo'
 export default {
   name: 'HelloWorld',
@@ -83,7 +142,7 @@ export default {
   },
   components: {
     InfiniteLoading,
-    PullTo,
+    PullToRefresh,
     Demo
   }
 }
