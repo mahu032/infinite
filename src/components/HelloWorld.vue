@@ -2,7 +2,7 @@
   <div>
     <span v-for="item in tabs" :key="item.id" @click="switchTab(item)" :style="{color:item.id===params?'red':''}">{{item.name}}</span>
     <div class="infinite-wrapper" infinite-wrapper>
-      <PullTo @top-pull="toPull" @bottom-pull="toPull" @scroll="scroll" :topLoadMethod="topLoad" :bottomLoadMethod="bottomLoad">
+      <PullToRefresh @top-pull="toPull" @bottom-pull="toPull" @scroll="scroll" :topLoadMethod="topLoad" :bottomLoadMethod="bottomLoad">
         <!--
           slot 支持
           <div slot="no-result"></div>
@@ -64,7 +64,7 @@
          -->
         <div slot="bottom-block">底---部</div>
         <component :is="showModal" :list="list" />
-      </PullTo>
+      </PullToRefresh>
       <!-- <component :is="showModal" :list="list" :style="{display:display}" /> -->
       <!-- <infinite-loading :on-infinite="getData" ref="infinite">
         <span slot="no-results" style="display:none;"></span>
